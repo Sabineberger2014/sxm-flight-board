@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tortuga Maho Beach Flight Board (SXM)</title>
+    <style>
+        body { font-family: 'Montserrat', sans-serif; background: #1a1a1a; color: #ffffff; margin: 0; padding: 0; }
+        .board-container { display: flex; width: 95%; max-width: 1920px; margin: 20px auto; gap: 20px; }
+        .board { flex: 1; padding: 15px; background: #2a2a2a; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); }
+        h1 { font-size: 28px; text-align: center; color: #ffcc00; margin-bottom: 15px; border-bottom: 2px solid #3a3a3a; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 16px; table-layout: fixed; }
+        th, td { padding: 12px 8px; border-bottom: 1px solid #3a3a3a; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        th { background: #3a3a3a; font-weight: bold; text-transform: uppercase; font-size: 14px; }
+        .status-landed, .status-departed { color: #4CAF50; font-weight: bold; } /* Green */
+        .status-delayed { color: #FF9800; font-weight: bold; } /* Amber */
+        .status-scheduled { color: #cccccc; }
+        #last-updated { text-align: center; font-size: 14px; padding: 10px; color: #999; }
+    </style>
+</head>
+<body>
+
+    <div class="board-container">
+        <div class="board" id="arrivals-board">
+            <h1>Arrivals (SXM)</h1>
+            <table><thead><tr><th style="width:15%">Time</th><th style="width:25%">Flight</th><th style="width:35%">From</th><th style="width:25%">Status</th></tr></thead><tbody id="arrivals-body"></tbody></table>
+        </div>
+        <div class="board" id="departures-board">
+            <h1>Departures (SXM)</h1>
+            <table><thead><tr><th style="width:15%">Time</th><th style="width:25%">Flight</th><th style="width:35%">To</th><th style="width:25%">Status</th></tr></thead><tbody id="departures-body"></tbody></table>
+        </div>
+    </div>
+    
+    <div id="last-updated">Updating...</div>
+
+    <script>
+        // CRITICAL: Replace the placeholder with your actual, clean token value.
+        const API_TOKEN = '019a0d59-1ea6-733d-8697-bdf460337769|hXzcJakmSxksmMeCWOUHq2yYA8wjeX7A5RQhCclreca2b6ec'; 
+        const AIRPORT_CODE = 'TNCM'; // Princess Juliana International (SXM)
+        const BASE_URL = 'https://fr24api.flightradar24.com/api/flight-summary/light';
+
+        function formatTime(timestamp) {
+            if (!timestamp) return '—';
+            return new Date(timestamp * 1000).toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                timeZone: 'America/Curacao' 
+            });
+        }
+
+        function createRow(flight, isArrival) {
+            // Use estimated time if available, otherwise scheduled
+            const time = isArrival 
+                ? (flight.time.estimated.arrival || flight.time.scheduled.arrival)
+                : (flight.time.estimated.departure || flight.time.scheduled.departure);
+
+            const scheduledTime = formatTime(time);
+            const flightNum = flight.flight_number || 'N/A';
+            const airportCode = isArrival ? flight.orig_iata : flight.dest_iata;
+            const statusText = flight.status.text || 'Scheduled';
+            
+            let statusClass = 'status-scheduled';
+            if (statusText.includes('Landed') || statusText.includes('Departed')) {
+                statusClass = 'status-landed';
+            } else if (statusText.includes('Delayed') || statusText.includes('Canceled')) {
+                statusClass = 'status-delayed';
+            }
+
+            return `
+                <tr>
+                    <td>${scheduledTime}</td>
+                    <td>${flightNum}</td>
+                    <td>${airportCode}</td>
+                    <td class="${statusClass}">${statusText}</td>
+                </tr>
+            `;
+        }
+
+        async function fetchFlights(type) {
+            const params = (type === 'arrivals') 
+                ? `destination=${AIRPORT_CODE}&limit=20` 
+                : `origin=${AIRPORT_CODE}&limit=20`;
+
+            try {
+                const response = await fetch(`${BASE_URL}?${params}`, {
+                    method: 'GET',
+                    // This sends the token directly from the browser (Client-Side)
+                    headers: {
+                        'Authorization': `Bearer ${API_TOKEN}`,
+                        'Accept-Version': 'v1',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    // Log error but don't crash the display
+                    console.error(`FR24 API failed: ${response.status}`);
+                    return [];
+                }
+
+                const data = await response.json();
+                return data.data || [];
+
+            } catch (error) {
+                console.error(`Fetch error for ${type}:`, error);
+                return [];
+            }
+        }
+
+        async function updateFlightBoard() {
+            const [arrivals, departures] = await Promise.all([
+                fetchFlights('arrivals'),
+                fetchFlights('departures')
+            ]);
+
+            const arrivalBody = document.getElementById('arrivals-body');
+            const departureBody = document.getElementById('departures-body');
+            const lastUpdated = document.getElementById('last-updated');
+            
+            // Render the flight rows
+            arrivalBody.innerHTML = arrivals.map(f => createRow(f, true)).join('');
+            departureBody.innerHTML = departures.map(f => createRow(f, false)).join('');
+
+            lastUpdated.textContent = `Last updated: ${new Date().toLocaleTimeString()} (Next update in 60s)`;
+        }
+
+        // Run immediately and then every 60 seconds (to conserve credits)
+        updateFlightBoard(); 
+        setInterval(updateFlightBoard, 60000); 
+
+    </script>
+</body>
+</html>
