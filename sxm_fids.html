@@ -33,9 +33,9 @@
     <div id="last-updated">Updating...</div>
 
     <script>
-        // CRITICAL: This is your verified clean token value.
-        const API_TOKEN = '019a0d59-1ea6-733d-8697-bdf460337769|hXzcJakmSxksmMeCWOUHq2yYA8wjeX7A5RQhCclreca2b6ec'; 
-        const AIRPORT_CODE = 'TNCM'; // Princess Juliana International (SXM)
+        // Token is now the Sandbox Access Token for reliable testing
+        const API_TOKEN = '019995f8-bf1c-71b7-91be-8a8375bd6e58|FFQTBMWnB4WDpbcUnc2V1Vox8KuNzJWHqezlQNZGue3e69468'; 
+        const AIRPORT_CODE = 'TNCM';
         const BASE_URL = 'https://fr24api.flightradar24.com/api/flight-summary/light';
 
         function formatTime(timestamp) {
@@ -74,7 +74,7 @@
             `;
         }
         
-        // --- THIS FUNCTION CONTAINS THE FINAL FIX (User-Agent) ---
+        // This function includes the fix for the 400 error (User-Agent header)
         async function fetchFlights(type) {
             const paramName = (type === 'arrivals') ? 'destination' : 'origin';
             const url = `${BASE_URL}?${paramName}=${AIRPORT_CODE}&limit=20`;
@@ -86,7 +86,7 @@
                         'Authorization': `Bearer ${API_TOKEN}`,
                         'Accept-Version': 'v1',
                         'Accept': 'application/json',
-                        // FINAL FIX: This header is required by FR24 to prevent 400 Bad Request
+                        // CRITICAL FINAL FIX: Adding the required User-Agent header
                         'User-Agent': 'MahoBeachFlightBoard/1.0' 
                     }
                 });
@@ -104,8 +104,6 @@
                 return [];
             }
         }
-        // --- END OF FIX ---
-
 
         async function updateFlightBoard() {
             const [arrivals, departures] = await Promise.all([
