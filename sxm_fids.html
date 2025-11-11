@@ -74,12 +74,9 @@
             `;
         }
         
-        // --- THIS FUNCTION CONTAINS THE FINAL FIX FOR THE 400 ERROR ---
+        // --- THIS FUNCTION CONTAINS THE FINAL FIX (User-Agent) ---
         async function fetchFlights(type) {
-            // Determines the parameter name (destination or origin)
             const paramName = (type === 'arrivals') ? 'destination' : 'origin';
-
-            // Constructs the full URL for the API call
             const url = `${BASE_URL}?${paramName}=${AIRPORT_CODE}&limit=20`;
 
             try {
@@ -88,7 +85,9 @@
                     headers: {
                         'Authorization': `Bearer ${API_TOKEN}`,
                         'Accept-Version': 'v1',
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        // FINAL FIX: This header is required by FR24 to prevent 400 Bad Request
+                        'User-Agent': 'MahoBeachFlightBoard/1.0' 
                     }
                 });
 
