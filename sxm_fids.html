@@ -33,7 +33,7 @@
     <div id="last-updated">Updating...</div>
 
     <script>
-        // CRITICAL: Replace the placeholder with your actual, clean token value.
+        // CRITICAL: This is your verified clean token value.
         const API_TOKEN = '019a0d59-1ea6-733d-8697-bdf460337769|hXzcJakmSxksmMeCWOUHq2yYA8wjeX7A5RQhCclreca2b6ec'; 
         const AIRPORT_CODE = 'TNCM'; // Princess Juliana International (SXM)
         const BASE_URL = 'https://fr24api.flightradar24.com/api/flight-summary/light';
@@ -48,7 +48,6 @@
         }
 
         function createRow(flight, isArrival) {
-            // Use estimated time if available, otherwise scheduled
             const time = isArrival 
                 ? (flight.time.estimated.arrival || flight.time.scheduled.arrival)
                 : (flight.time.estimated.departure || flight.time.scheduled.departure);
@@ -74,16 +73,18 @@
                 </tr>
             `;
         }
-
+        
+        // --- THIS FUNCTION CONTAINS THE FINAL FIX FOR THE 400 ERROR ---
         async function fetchFlights(type) {
-            const params = (type === 'arrivals') 
-                ? `destination=${AIRPORT_CODE}&limit=20` 
-                : `origin=${AIRPORT_CODE}&limit=20`;
+            // Determines the parameter name (destination or origin)
+            const paramName = (type === 'arrivals') ? 'destination' : 'origin';
+
+            // Constructs the full URL for the API call
+            const url = `${BASE_URL}?${paramName}=${AIRPORT_CODE}&limit=20`;
 
             try {
-                const response = await fetch(`${BASE_URL}?${params}`, {
+                const response = await fetch(url, {
                     method: 'GET',
-                    // This sends the token directly from the browser (Client-Side)
                     headers: {
                         'Authorization': `Bearer ${API_TOKEN}`,
                         'Accept-Version': 'v1',
@@ -92,8 +93,7 @@
                 });
 
                 if (!response.ok) {
-                    // Log error but don't crash the display
-                    console.error(`FR24 API failed: ${response.status}`);
+                    console.error(`FR24 API failed: ${response.status} for URL: ${url}`);
                     return [];
                 }
 
@@ -105,6 +105,8 @@
                 return [];
             }
         }
+        // --- END OF FIX ---
+
 
         async function updateFlightBoard() {
             const [arrivals, departures] = await Promise.all([
