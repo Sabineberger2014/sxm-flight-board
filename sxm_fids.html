@@ -33,9 +33,9 @@
     <div id="last-updated">Updating...</div>
 
     <script>
-        // Token is now the Sandbox Access Token for reliable testing
+        // CRITICAL: This is the Sandbox Token for testing. Change it to your Maho Final token once verified working.
         const API_TOKEN = '019995f8-bf1c-71b7-91be-8a8375bd6e58|FFQTBMWnB4WDpbcUnc2V1Vox8KuNzJWHqezlQNZGue3e69468'; 
-        const AIRPORT_CODE = 'TNCM';
+        const AIRPORT_CODE = 'TNCM'; // Princess Juliana International (SXM)
         const BASE_URL = 'https://fr24api.flightradar24.com/api/flight-summary/light';
 
         function formatTime(timestamp) {
@@ -74,10 +74,22 @@
             `;
         }
         
-        // This function includes the fix for the 400 error (User-Agent header)
+        // --- THIS FUNCTION CONTAINS THE FINAL FIX FOR PARAMETERS AND HEADERS ---
         async function fetchFlights(type) {
-            const paramName = (type === 'arrivals') ? 'destination' : 'origin';
-            const url = `${BASE_URL}?${paramName}=${AIRPORT_CODE}&limit=20`;
+            // 1. Determine direction and parameter name
+            const direction = (type === 'arrivals') ? 'inbound' : 'outbound';
+            
+            // 2. Define the time window for the search (1 hour ago to 24 hours from now)
+            const now = new Date();
+            const oneHourAgo = new Date(now.getTime() - (60 * 60 * 1000));
+            const twentyFourHoursFromNow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
+            
+            // Format dates into the required ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ)
+            const datetime_from = oneHourAgo.toISOString().replace(/\.000Z$/, 'Z');
+            const datetime_to = twentyFourHoursFromNow.toISOString().replace(/\.000Z$/, 'Z');
+
+            // 3. Construct the FINAL, CORRECT URL using the new mandatory parameters
+            const url = `${BASE_URL}?flight_datetime_from=${datetime_from}&flight_datetime_to=${datetime_to}&airports=${direction}:${AIRPORT_CODE}`;
 
             try {
                 const response = await fetch(url, {
@@ -86,8 +98,7 @@
                         'Authorization': `Bearer ${API_TOKEN}`,
                         'Accept-Version': 'v1',
                         'Accept': 'application/json',
-                        // CRITICAL FINAL FIX: Adding the required User-Agent header
-                        'User-Agent': 'MahoBeachFlightBoard/1.0' 
+                        'User-Agent': 'MahoBeachFlightBoard/1.0' // Final User-Agent fix
                     }
                 });
 
@@ -104,6 +115,8 @@
                 return [];
             }
         }
+        // --- END OF FIX ---
+
 
         async function updateFlightBoard() {
             const [arrivals, departures] = await Promise.all([
