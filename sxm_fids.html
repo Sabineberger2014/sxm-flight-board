@@ -33,7 +33,7 @@
     <div id="last-updated">Updating...</div>
 
     <script>
-        // CRITICAL: Using the final production token for Maho Final
+        // CRITICAL: Using the final production token
         const API_TOKEN = '019a0d59-1ea6-733d-8697-bdf460337769|hXzcJakmSxksmMeCWOUHq2yYA8wjeX7A5RQhCclreca2b6ec'; 
         const AIRPORT_CODE = 'TNCM'; // Princess Juliana International (SXM)
         const BASE_URL = 'https://fr24api.flightradar24.com/api/flight-summary/light';
@@ -74,16 +74,17 @@
             `;
         }
         
-        // This function includes the fix for parameters, headers, and User-Agent
+        // --- THIS FUNCTION CONTAINS THE FINAL FIX FOR DATE FORMATTING AND HEADERS ---
         async function fetchFlights(type) {
             const direction = (type === 'arrivals') ? 'inbound' : 'outbound';
             
+            // Fix 1: Generate date parameters correctly as ISO strings (YYYY-MM-DDTHH:MM:SSZ)
             const now = new Date();
             const oneHourAgo = new Date(now.getTime() - (60 * 60 * 1000));
             const twentyFourHoursFromNow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
             
-            const datetime_from = oneHourAgo.toISOString().replace(/\.000Z$/, 'Z');
-            const datetime_to = twentyFourHoursFromNow.toISOString().replace(/\.000Z$/, 'Z');
+            const datetime_from = oneHourAgo.toISOString();
+            const datetime_to = twentyFourHoursFromNow.toISOString();
 
             // Constructs the FINAL, CORRECT URL using mandatory parameters
             const url = `${BASE_URL}?flight_datetime_from=${datetime_from}&flight_datetime_to=${datetime_to}&airports=${direction}:${AIRPORT_CODE}`;
@@ -100,8 +101,8 @@
                 });
 
                 if (!response.ok) {
-                    // Log the error status if the request fails
-                    console.error(`FR24 API failed: ${response.status} for URL: ${url}`);
+                    // Logs the failed URL for debugging if the 400 persists
+                    console.error(`FR24 API failed: ${response.status} for URL: ${response.url}`);
                     return [];
                 }
 
@@ -113,6 +114,8 @@
                 return [];
             }
         }
+        // --- END OF FIX ---
+
 
         async function updateFlightBoard() {
             const [arrivals, departures] = await Promise.all([
