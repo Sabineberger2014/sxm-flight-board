@@ -48,14 +48,34 @@
         }
 
         function createRow(flight, isArrival) {
-            const time = isArrival 
-                ? (flight.time.estimated.arrival || flight.time.scheduled.arrival)
-                : (flight.time.estimated.departure || flight.time.scheduled.departure);
+            const flightTime = flight.time || {}; 
+            
+            // Safely retrieve estimated and scheduled times
+            const estimated = isArrival 
+                ? flightTime.estimated?.arrival 
+                : flightTime.estimated?.departure;
+            const scheduled = isArrival 
+                ? flightTime.scheduled?.arrival 
+                : flightTime.scheduled?.departure;
 
-            const scheduledTime = formatTime(time);
+            const time = estimated || scheduled; 
+
             const flightNum = flight.flight_number || 'N/A';
             const airportCode = isArrival ? flight.orig_iata : flight.dest_iata;
-            const statusText = flight.status.text || 'Scheduled';
+            const statusText = flight.status?.text || 'Scheduled';
+
+            if (!time) {
+                return `
+                    <tr>
+                        <td>—</td>
+                        <td>${flightNum}</td>
+                        <td>${airportCode}</td>
+                        <td class="status-scheduled">${statusText}</td>
+                    </tr>
+                `;
+            }
+
+            const displayTime = formatTime(time);
             
             let statusClass = 'status-scheduled';
             if (statusText.includes('Landed') || statusText.includes('Departed')) {
@@ -66,7 +86,7 @@
 
             return `
                 <tr>
-                    <td>${scheduledTime}</td>
+                    <td>${displayTime}</td>
                     <td>${flightNum}</td>
                     <td>${airportCode}</td>
                     <td class="${statusClass}">${statusText}</td>
@@ -74,70 +94,13 @@
             `;
         }
         
-        // --- THIS FUNCTION CONTAINS THE FINAL FIX FOR DATE FORMATTING AND HEADERS ---
+        // --- THIS FUNCTION CONTAINS THE FINAL FIX FOR DATE FORMATTING ---
         async function fetchFlights(type) {
             const direction = (type === 'arrivals') ? 'inbound' : 'outbound';
             
-            // Fix 1: Generate date parameters correctly as ISO strings (YYYY-MM-DDTHH:MM:SSZ)
+            // Fix 1: Generate date parameters correctly as ISO strings
             const now = new Date();
             const oneHourAgo = new Date(now.getTime() - (60 * 60 * 1000));
             const twentyFourHoursFromNow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
             
-            const datetime_from = oneHourAgo.toISOString();
-            const datetime_to = twentyFourHoursFromNow.toISOString();
-
-            // Constructs the FINAL, CORRECT URL using mandatory parameters
-            const url = `${BASE_URL}?flight_datetime_from=${datetime_from}&flight_datetime_to=${datetime_to}&airports=${direction}:${AIRPORT_CODE}`;
-
-            try {
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${API_TOKEN}`,
-                        'Accept-Version': 'v1',
-                        'Accept': 'application/json',
-                        'User-Agent': 'MahoBeachFlightBoard/1.0' 
-                    }
-                });
-
-                if (!response.ok) {
-                    // Logs the failed URL for debugging if the 400 persists
-                    console.error(`FR24 API failed: ${response.status} for URL: ${response.url}`);
-                    return [];
-                }
-
-                const data = await response.json();
-                return data.data || [];
-
-            } catch (error) {
-                console.error(`Fetch error for ${type}:`, error);
-                return [];
-            }
-        }
-        // --- END OF FIX ---
-
-
-        async function updateFlightBoard() {
-            const [arrivals, departures] = await Promise.all([
-                fetchFlights('arrivals'),
-                fetchFlights('departures')
-            ]);
-
-            const arrivalBody = document.getElementById('arrivals-body');
-            const departureBody = document.getElementById('departures-body');
-            const lastUpdated = document.getElementById('last-updated');
-            
-            // Render the flight rows
-            arrivalBody.innerHTML = arrivals.map(f => createRow(f, true)).join('');
-            departureBody.innerHTML = departures.map(f => createRow(f, false)).join('');
-
-            lastUpdated.textContent = `Last updated: ${new Date().toLocaleTimeString()} (Next update in 60s)`;
-        }
-
-        // Run immediately and then every 60 seconds (to conserve credits)
-        updateFlightBoard(); 
-        setInterval(updateFlightBoard, 60000); 
-
-    </script>
-</body>
-</html>
+            // CRITICAL
