@@ -33,8 +33,8 @@
     <div id="last-updated">Updating...</div>
 
     <script>
-        // CRITICAL: This is the Sandbox Token for testing. Change it to your Maho Final token once verified working.
-        const API_TOKEN = '019995f8-bf1c-71b7-91be-8a8375bd6e58|FFQTBMWnB4WDpbcUnc2V1Vox8KuNzJWHqezlQNZGue3e69468'; 
+        // CRITICAL: Using the final production token for Maho Final
+        const API_TOKEN = '019a0d59-1ea6-733d-8697-bdf460337769|hXzcJakmSxksmMeCWOUHq2yYA8wjeX7A5RQhCclreca2b6ec'; 
         const AIRPORT_CODE = 'TNCM'; // Princess Juliana International (SXM)
         const BASE_URL = 'https://fr24api.flightradar24.com/api/flight-summary/light';
 
@@ -74,21 +74,18 @@
             `;
         }
         
-        // --- THIS FUNCTION CONTAINS THE FINAL FIX FOR PARAMETERS AND HEADERS ---
+        // This function includes the fix for parameters, headers, and User-Agent
         async function fetchFlights(type) {
-            // 1. Determine direction and parameter name
             const direction = (type === 'arrivals') ? 'inbound' : 'outbound';
             
-            // 2. Define the time window for the search (1 hour ago to 24 hours from now)
             const now = new Date();
             const oneHourAgo = new Date(now.getTime() - (60 * 60 * 1000));
             const twentyFourHoursFromNow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
             
-            // Format dates into the required ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ)
             const datetime_from = oneHourAgo.toISOString().replace(/\.000Z$/, 'Z');
             const datetime_to = twentyFourHoursFromNow.toISOString().replace(/\.000Z$/, 'Z');
 
-            // 3. Construct the FINAL, CORRECT URL using the new mandatory parameters
+            // Constructs the FINAL, CORRECT URL using mandatory parameters
             const url = `${BASE_URL}?flight_datetime_from=${datetime_from}&flight_datetime_to=${datetime_to}&airports=${direction}:${AIRPORT_CODE}`;
 
             try {
@@ -98,11 +95,12 @@
                         'Authorization': `Bearer ${API_TOKEN}`,
                         'Accept-Version': 'v1',
                         'Accept': 'application/json',
-                        'User-Agent': 'MahoBeachFlightBoard/1.0' // Final User-Agent fix
+                        'User-Agent': 'MahoBeachFlightBoard/1.0' 
                     }
                 });
 
                 if (!response.ok) {
+                    // Log the error status if the request fails
                     console.error(`FR24 API failed: ${response.status} for URL: ${url}`);
                     return [];
                 }
@@ -115,8 +113,6 @@
                 return [];
             }
         }
-        // --- END OF FIX ---
-
 
         async function updateFlightBoard() {
             const [arrivals, departures] = await Promise.all([
